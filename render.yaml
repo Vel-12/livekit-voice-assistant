@@ -1,5 +1,5 @@
 services:
-- type: pserv
+- type: web
   repo: https://github.com/Vel-12/livekit-voice-assistant
 
   # Change this to the path containing your Dockerfile
