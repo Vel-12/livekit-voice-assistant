@@ -31,8 +31,9 @@ class DatabaseDriver:
     def __init__(self, db_path: str = None):
         if db_path is None:
             # Get the directory where this file is located
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.db_path = os.path.join(current_dir, "moving_db.sqlite")
+            # current_dir = os.path.dirname(os.path.abspath(__file__))
+            # self.db_path = os.path.join(current_dir, "moving_db.sqlite")
+            self.db_path = "/app/data/moving_db.sqlite"
         else:
             self.db_path = db_path
         logger.info(f"Initializing database at: {self.db_path}")
