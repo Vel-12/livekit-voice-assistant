@@ -1,9 +1,11 @@
-import sqlite3
-from typing import Optional
-from dataclasses import dataclass
-from contextlib import contextmanager
 import os
 import logging
+from contextlib import contextmanager
+from typing import Optional
+from dataclasses import dataclass
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -28,21 +30,17 @@ class MovingRequest:
     car_model: Optional[str]
 
 class DatabaseDriver:
-    def __init__(self, db_path: str = None):
-        if db_path is None:
-            # Get the directory where this file is located
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.db_path = os.path.join(current_dir, "moving_db.sqlite")
-            # self.db_path = "/app/data/moving_db.sqlite"
-        else:
-            self.db_path = db_path
-        logger.info(f"Initializing database at: {self.db_path}")
+    def __init__(self, db_url: str = None):
+        self.db_url = db_url or os.getenv("DATABASE_URL")
+        if not self.db_url:
+            raise ValueError("DATABASE_URL environment variable must be set for PostgreSQL.")
+        logger.info(f"Initializing database at: {self.db_url}")
         self._init_db()
 
     @contextmanager
     def _get_connection(self):
-        logger.info(f"Connecting to database at: {self.db_path}")
-        conn = sqlite3.connect(self.db_path)
+        logger.info(f"Connecting to database at: {self.db_url}")
+        conn = psycopg2.connect(self.db_url, cursor_factory=RealDictCursor)
         try:
             yield conn
         finally:
@@ -107,7 +105,7 @@ class DatabaseDriver:
                        (request_id, customer_name, email, phone_number, phone_type,
                         from_address, from_building_type, from_bedrooms, to_address,
                         move_date, flexible_date, assist_car, car_year, car_make, car_model) 
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (request_id, customer_name, email, phone_number, phone_type,
                      from_address, from_building_type, from_bedrooms, to_address,
                      move_date, flexible_date, assist_car, car_year, car_make, car_model)
@@ -116,7 +114,7 @@ class DatabaseDriver:
                 logger.info(f"Successfully created moving request: {request_id}")
                 
                 # Verify the data was inserted
-                cursor.execute("SELECT * FROM moving_requests WHERE request_id = ?", (request_id,))
+                cursor.execute("SELECT * FROM moving_requests WHERE request_id = %s", (request_id,))
                 row = cursor.fetchone()
                 if row:
                     logger.info(f"Verified data insertion: {row}")
@@ -148,7 +146,7 @@ class DatabaseDriver:
         logger.info(f"Looking up moving request with ID: {request_id}")
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM moving_requests WHERE request_id = ?", (request_id,))
+            cursor.execute("SELECT * FROM moving_requests WHERE request_id = %s", (request_id,))
             row = cursor.fetchone()
             if not row:
                 logger.info(f"No moving request found with ID: {request_id}")
@@ -156,19 +154,19 @@ class DatabaseDriver:
             
             logger.info(f"Found moving request: {row}")
             return MovingRequest(
-                request_id=row[0],
-                customer_name=row[1],
-                email=row[2],
-                phone_number=row[3],
-                phone_type=row[4],
-                from_address=row[5],
-                from_building_type=row[6],
-                from_bedrooms=row[7],
-                to_address=row[8],
-                move_date=row[9],
-                flexible_date=bool(row[10]),
-                assist_car=bool(row[11]),
-                car_year=row[12],
-                car_make=row[13],
-                car_model=row[14]
+                request_id=row['request_id'],
+                customer_name=row['customer_name'],
+                email=row['email'],
+                phone_number=row['phone_number'],
+                phone_type=row['phone_type'],
+                from_address=row['from_address'],
+                from_building_type=row['from_building_type'],
+                from_bedrooms=row['from_bedrooms'],
+                to_address=row['to_address'],
+                move_date=row['move_date'],
+                flexible_date=row['flexible_date'],
+                assist_car=row['assist_car'],
+                car_year=row['car_year'],
+                car_make=row['car_make'],
+                car_model=row['car_model']
             )

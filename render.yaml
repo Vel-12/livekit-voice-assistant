@@ -1,29 +1,44 @@
 services:
-- type: web
-  repo: https://github.com/Vel-12/livekit-voice-assistant
+  # Frontend Service (Streamlit Dashboard)
+  - type: web
+    name: moving-frontend
+    repo: https://github.com/Vel-12/livekit-voice-assistant
+    rootDir: .
+    runtime: python
+    plan: starter
+    region: virginia
+    
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run frontend.py --server.port=$PORT --server.address=0.0.0.0
+    
+    envVars:
+      - fromGroup: livekit-voice-assistant-env
+    
+    scaling:
+      minInstances: 1
+      maxInstances: 2
+      targetCPUPercent: 60
+      targetMemoryPercent: 60
 
-  # Change this to the path containing your Dockerfile
-  rootDir: .
+  # Backend Service (LiveKit Agent)
+  - type: worker
+    name: moving-backend
+    repo: https://github.com/Vel-12/livekit-voice-assistant
+    rootDir: .
+    runtime: python
+    plan: starter
+    region: virginia
+    
+    buildCommand: pip install -r requirements.txt
+    startCommand: python agent.py
+    
+    envVars:
+      - fromGroup: livekit-voice-assistant-env
+    
+    scaling:
+      minInstances: 1
+      maxInstances: 2
+      targetCPUPercent: 60
+      targetMemoryPercent: 60
 
-  name: livekit-voice-assistant
-  runtime: image
-
-  # Free plan is not available for private services
-  plan: starter
-
-  # Environment variables are stored in a group
-  # created in the Render dashboard.
-  envVars:
-  - fromGroup: livekit-voice-assistant-env 
-  region: virginia
-
-  # 300s is the standard allowed maximum. Talk to render.com support if you need this increased.
-  maxShutdownDelaySeconds: 300
-
-  # Sane defaults
-  scaling:
-    minInstances: 1
-    maxInstances: 4
-    targetCPUPercent: 60
-    targetMemoryPercent: 60
 version: "1"

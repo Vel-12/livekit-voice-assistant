@@ -10,3 +10,4 @@ flask-cors
 uvicorn
 openai>=1.12.0
 streamlit
+psycopg2-binary
